@@ -86,31 +86,36 @@ while read -r FILENAME; do
     
     # each size exists only once in sizes file. So if it finds a duplicate
     # size also it's partial hash needs to be created
-    LFILENAME=$(echo "${lh}" | awk -F'|' '{print $1}');
-    LPSUM=$({ head -c ${S_PART} "${LFILENAME}"; if [ ${SIZE} -gt ${D_PART} ]; then tail -c ${S_PART} "${LFILENAME}"; fi; } | ${C_CHECKSUM} | awk '{print $1}')
+    LFILENAME="${lh%|*}"
+    LPSUM=$({ head -c ${S_PART} "${LFILENAME}"; } | ${C_CHECKSUM})
+    LPSUM=${LPSUM% *}
+
     if ! $(LC_ALL=C grep -F -q -m1 "|${LPSUM}" "${F_PARTIAL}"); then
       echo "${LFILENAME}|${LPSUM}" | tee -a "${F_PARTIAL}" | xargs -0 printf "+ Added (partial checksum): %s"
     fi
 
-    PSUM=$({ head -c ${S_PART} "${FILENAME}"; if [ ${SIZE} -gt ${D_PART} ]; then tail -c ${S_PART} "${FILENAME}"; fi; } | ${C_CHECKSUM} | awk '{print $1}')
+    PSUM=$({ head -c ${S_PART} "${FILENAME}"; } | ${C_CHECKSUM})
+    PSUM=${PSUM% *}
     if fh=$(LC_ALL=C grep -F -m1 "|${PSUM}" "${F_PARTIAL}"); then
       echo "+ Duplicate candidate detected (By partial checksum)..."
 
       # each partial hash exists only once in partial file. So if it finds a
       # duplicate partial hash it's full hash needs to be created, too
-      FFILENAME=$(echo "${fh}" | awk -F'|' '{print $1}');
-      FFSUM=$(${C_CHECKSUM} "${FFILENAME}" | awk '{print $1}');
+      FFILENAME="${fh%|*}"
+      FFSUM=$(${C_CHECKSUM} "${FFILENAME}");
+      FFSUM=${FFSUM% *}
       if ! $(LC_ALL=C grep -F -q -m1 "|${FFSUM}" "${F_CHECKSUMS}"); then
         echo "${FFILENAME}|${FFSUM}" | tee -a "${F_CHECKSUMS}" | xargs -0 printf "+ Added (${C_CHECKSUM}): %s"
       fi
 
-      SUM=$(${C_CHECKSUM} "${FILENAME}" | awk '{print $1}');
+      SUM=$(${C_CHECKSUM} "${FILENAME}");
+      SUM=${SUM% *}
       if ! $(LC_ALL=C grep -F -q -m1 "|${SUM}" "${F_CHECKSUMS}"); then
         # no copy detected - add
 	echo "${FILENAME}|${SUM}" | tee -a "${F_CHECKSUMS}" | xargs -0 printf "+ Added (${C_CHECKSUM}): %s"
       else
         # duplicate detected 
-        D_NAME=$(echo "${FILENAME}" | awk -F '/' '{print $NF}');
+	D_NAME="${FILENAME##*/}"
 	echo "+ Duplicate detected (By ${C_CHECKSUM})..." >&2
         echo "+ Moving ${D_NAME} to ${P_DST}/${D_NAME}" >&2
         # lets make sure not to overwrite anything.
