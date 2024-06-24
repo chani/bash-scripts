@@ -79,13 +79,6 @@ COPIES=0
 
 ((D_PART=S_PART*2))
 
-# needs S_PART (how many bytes to read) D_PART (should be S_PART*2)
-# C_CHECKSUM (checksum command) and takes filename as argument
-create_partial_hash() {
-  local filename="$1"
-  echo $({ head -c ${S_PART} "${filename}"; if [ ${S_PART} -gt ${D_PART} ]; then tail -c ${S_PART} "${filename}"; fi; } | ${C_CHECKSUM} | awk '{print $1}')
-}
-
 while read -r FILENAME; do
   SIZE=$(stat --printf=%s "${FILENAME}");
   if lh=$(LC_ALL=C grep -F -m1 "|${SIZE}" "${F_SIZES}"); then
@@ -94,12 +87,12 @@ while read -r FILENAME; do
     # each size exists only once in sizes file. So if it finds a duplicate
     # size also it's partial hash needs to be created
     LFILENAME=$(echo "${lh}" | awk -F'|' '{print $1}');
-    LPSUM=$(create_partial_hash "${LFILENAME}")
+    LPSUM=$({ head -c ${S_PART} "${LFILENAME}"; if [ ${SIZE} -gt ${D_PART} ]; then tail -c ${S_PART} "${LFILENAME}"; fi; } | ${C_CHECKSUM} | awk '{print $1}')
     if ! $(LC_ALL=C grep -F -q -m1 "|${LPSUM}" "${F_PARTIAL}"); then
       echo "${LFILENAME}|${LPSUM}" | tee -a "${F_PARTIAL}" | xargs -0 printf "+ Added (partial checksum): %s"
     fi
 
-    PSUM=$(create_partial_hash "${FILENAME}")
+    PSUM=$({ head -c ${S_PART} "${FILENAME}"; if [ ${SIZE} -gt ${D_PART} ]; then tail -c ${S_PART} "${FILENAME}"; fi; } | ${C_CHECKSUM} | awk '{print $1}')
     if fh=$(LC_ALL=C grep -F -m1 "|${PSUM}" "${F_PARTIAL}"); then
       echo "+ Duplicate candidate detected (By partial checksum)..."
 
