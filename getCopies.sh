@@ -81,31 +81,31 @@ COPIES=0
 
 while read -r FILENAME; do
   SIZE=$(stat --printf=%s "${FILENAME}");
-  if lh=$(grep -m1 "|${SIZE}" "${F_SIZES}"); then
+  if lh=$(LC_ALL=C grep -F -m1 "|${SIZE}" "${F_SIZES}"); then
     echo "+ Duplicate candidate detected (By size)..."
     
     # each size exists only once in sizes file. So if it finds a duplicate
     # size also it's partial hash needs to be created
     LFILENAME=$(echo "${lh}" | awk -F'|' '{print $1}');
     LPSUM=$({ head -c ${S_PART} "${LFILENAME}"; if [ ${SIZE} -gt ${D_PART} ]; then tail -c ${S_PART} "${LFILENAME}"; fi; } | ${C_CHECKSUM} | awk '{print $1}')
-    if ! grep -q -m1 "|${LPSUM}" "${F_PARTIAL}"; then
+    if ! $(LC_ALL=C grep -F -q -m1 "|${LPSUM}" "${F_PARTIAL}"); then
       echo "${LFILENAME}|${LPSUM}" | tee -a "${F_PARTIAL}" | xargs -0 printf "+ Added (partial checksum): %s"
     fi
 
     PSUM=$({ head -c ${S_PART} "${FILENAME}"; if [ ${SIZE} -gt ${D_PART} ]; then tail -c ${S_PART} "${FILENAME}"; fi; } | ${C_CHECKSUM} | awk '{print $1}')
-    if fh=$(grep -m1 "|${PSUM}" "${F_PARTIAL}"); then
+    if fh=$(LC_ALL=C grep -F -m1 "|${PSUM}" "${F_PARTIAL}"); then
       echo "+ Duplicate candidate detected (By partial checksum)..."
 
       # each partial hash exists only once in partial file. So if it finds a
       # duplicate partial hash it's full hash needs to be created, too
       FFILENAME=$(echo "${fh}" | awk -F'|' '{print $1}');
       FFSUM=$(${C_CHECKSUM} "${FFILENAME}" | awk '{print $1}');
-      if ! grep -q -m1 "|${FFSUM}" "${F_CHECKSUMS}"; then
+      if ! $(LC_ALL=C grep -F -q -m1 "|${FFSUM}" "${F_CHECKSUMS}"); then
         echo "${FFILENAME}|${FFSUM}" | tee -a "${F_CHECKSUMS}" | xargs -0 printf "+ Added (${C_CHECKSUM}): %s"
       fi
 
       SUM=$(${C_CHECKSUM} "${FILENAME}" | awk '{print $1}');
-      if ! grep -q -m1 "|${SUM}" "${F_CHECKSUMS}"; then
+      if ! $(LC_ALL=C grep -F -q -m1 "|${SUM}" "${F_CHECKSUMS}"); then
         # no copy detected - add
 	echo "${FILENAME}|${SUM}" | tee -a "${F_CHECKSUMS}" | xargs -0 printf "+ Added (${C_CHECKSUM}): %s"
       else
