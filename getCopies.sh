@@ -14,7 +14,7 @@
 ##                                                                 ##
 #####################################################################
 
-date +%s > start.txt
+#date +%s > start.txt
 
 # Checksum command. 
 # e.g. md5sum, sha1sum, cksum -a sha224, rhash --md4 --simple
@@ -25,11 +25,10 @@ P_SRC="$1"
 # Where to move duplicates to
 P_DST="$2/copies"
 
-# how many bytes to read from start end end of file for partial
-# checksum (to speed up processing). Will not read from end if
-# smaller than this*2. Smaller values do not necessarily make
-# it faster - because e.g. a value of 20 will cause more files
-# to be checked with a full hash (which then is slow).
+# how many bytes to read from start of file for partial checksum (to
+# speed up processing). Smaller values do not necessarily make it
+# faster - because e.g. a value of 20 will cause more files to be
+# checked with a full hash (which then is slow).
 S_PART=4096
 
 # The follwoing three files would be best on tmpfs
@@ -80,8 +79,6 @@ exec 3>> "${F_SIZES}"
 
 PROCESSED=0
 COPIES=0
-
-((D_PART=S_PART*2))
 
 while read -r FILENAME; do
   SIZE=$(stat --printf=%s "${FILENAME}");
@@ -144,4 +141,4 @@ done< <(find "${P_SRC}" -type f)
 
 echo "+ Moved ${COPIES} copies of ${PROCESSED} files";
 
-date +%s > end.txt
+#ate +%s > end.txt
