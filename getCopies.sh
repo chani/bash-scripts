@@ -74,6 +74,10 @@ if [ -f "${F_PARTIAL}" ]; then
 fi
 touch "${F_PARTIAL}"
 
+exec 5>> "${F_CHECKSUMS}"
+exec 4>> "${F_PARTIAL}"
+exec 3>> "${F_SIZES}"
+
 PROCESSED=0
 COPIES=0
 
@@ -91,7 +95,8 @@ while read -r FILENAME; do
     LPSUM=${LPSUM% *}
 
     if ! $(LC_ALL=C grep -F -q -m1 "|${LPSUM}" "${F_PARTIAL}"); then
-      echo "${LFILENAME}|${LPSUM}" | tee -a "${F_PARTIAL}" | xargs -0 printf "+ Added (partial checksum): %s"
+      echo "+ Added (partial checksum): ${LPSUM}"
+      echo "${LFILENAME}|${LPSUM}" >&4
     fi
 
     PSUM=$({ head -c ${S_PART} "${FILENAME}"; } | ${C_CHECKSUM})
@@ -105,14 +110,16 @@ while read -r FILENAME; do
       FFSUM=$(${C_CHECKSUM} "${FFILENAME}");
       FFSUM=${FFSUM% *}
       if ! $(LC_ALL=C grep -F -q -m1 "|${FFSUM}" "${F_CHECKSUMS}"); then
-        echo "${FFILENAME}|${FFSUM}" | tee -a "${F_CHECKSUMS}" | xargs -0 printf "+ Added (${C_CHECKSUM}): %s"
+	echo "+ Added (${C_CHECKSUM}): ${FFSUM}"
+	echo "${FFILENAME}|${FFSUM}" >&5
       fi
 
       SUM=$(${C_CHECKSUM} "${FILENAME}");
       SUM=${SUM% *}
       if ! $(LC_ALL=C grep -F -q -m1 "|${SUM}" "${F_CHECKSUMS}"); then
         # no copy detected - add
-	echo "${FILENAME}|${SUM}" | tee -a "${F_CHECKSUMS}" | xargs -0 printf "+ Added (${C_CHECKSUM}): %s"
+        echo "+ Added (${C_CHECKSUM}): ${SUM}"
+	echo "${FILENAME}|${SUM}" >&5
       else
         # duplicate detected 
 	D_NAME="${FILENAME##*/}"
@@ -125,10 +132,12 @@ while read -r FILENAME; do
         ((COPIES=COPIES+1))
       fi
     else
-      echo "${FILENAME}|${PSUM}" | tee -a "${F_PARTIAL}" | xargs -0 printf "+ Added (partial checksum): %s"
+      echo "+ Added (partial checksum): ${PSUM}"
+      echo "${FILENAME}|${PSUM}" >&4
     fi
   else
-    echo "${FILENAME}|${SIZE}" | tee -a "${F_SIZES}" | xargs -0 printf "+ Added (size): %s"
+    echo "+ Added (size): ${SIZE}"
+    echo "${FILENAME}|${SIZE}" >&3
   fi
   ((PROCESSED=PROCESSED+1))
 done< <(find "${P_SRC}" -type f)
